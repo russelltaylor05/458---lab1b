@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <stdint.h>
+
 
 /*Compile-Time Declaration on double or float usage*/
 #ifdef DOUBLE
@@ -49,9 +49,9 @@ char* read_file(const char * file_name)
 }
 
 /*Calculate the Resultant Matrix from Multiplication*/
-void calc_matrix(TYPEUSE *A, TYPEUSE *B, TYPEUSE *C, int Arow, int Acol, int Brow, int Bcol)
+void calc_matrix(TYPEUSE **A, TYPEUSE **B, TYPEUSE **C, int Arow, int Acol, int Brow, int Bcol)
 {
-  uint64_t i, j, k;
+  int i, j, k;
   TYPEUSE sum = 0;
   for(i = 0; i < Arow; i++)//Iterate through Matrix B columnwise
   {
@@ -59,19 +59,16 @@ void calc_matrix(TYPEUSE *A, TYPEUSE *B, TYPEUSE *C, int Arow, int Acol, int Bro
     {
         for(k = 0; k < Acol; k++)//Acol = Brow on valid Matrices
         {
-          if(i >475)
-            printf("");
-          sum+= A[ i* (Acol) + k] * B[k * (Bcol) + j];
-          
+            sum+= A[i][k] * B[k][j];
         }
-        C[i *Acol + j] = sum;
+        C[i][j] = sum;
         sum = 0;
     }
   }
 }
 
 /* Print matrix values to a file outputfile */
-void output_matrix(const char * outputfile, TYPEUSE *matrix, int row, int col) 
+void output_matrix(const char * outputfile, TYPEUSE **matrix, int row, int col) 
 {
   int i, j;
 
@@ -83,7 +80,7 @@ void output_matrix(const char * outputfile, TYPEUSE *matrix, int row, int col)
 
   for(i = 0; i < row; i++) {
     for(j = 0; j < col; j++) {
-      fprintf(ofp, "%.2f ",matrix[i*uint64_t(col) + j]);
+      fprintf(ofp, "%.2f ",matrix[i][j]);
     }  
     if(i < row-1){
       fprintf(ofp, "\n");
@@ -92,7 +89,7 @@ void output_matrix(const char * outputfile, TYPEUSE *matrix, int row, int col)
   fclose(ofp);
 }
 
-void print_matrix(const char * outputfile, TYPEUSE *matrix, int row, int col) 
+void print_matrix(const char * outputfile, TYPEUSE **matrix, int row, int col) 
 {
   int i, j;
 
@@ -104,8 +101,7 @@ void print_matrix(const char * outputfile, TYPEUSE *matrix, int row, int col)
 
   for(i = 0; i < row; i++) {
     for(j = 0; j < col; j++) {
-      printf("Row: %d Col: %d Num: ", i, j);
-      printf("%.2f ",matrix[i*col +j]);
+      printf("%.2f ",matrix[i][j]);
     }  
     if(i < row-1){
       printf("\n");
@@ -115,15 +111,15 @@ void print_matrix(const char * outputfile, TYPEUSE *matrix, int row, int col)
 }
 
 /*Created a Matrix based on Buffered Input Information*/
-TYPEUSE * read_matrix(int * rowCnt, int * colCnt, char * mapped)
+TYPEUSE ** read_matrix(int * rowCnt, int * colCnt, char * mapped)
 {
   TYPEUSE value;  
   const char *delim_space = " ";
   char *token = NULL;  
   char *unconverted;
   int i, j, len;
-  TYPEUSE *matrix;
-  uint64_t bigiter;
+  TYPEUSE **matrix;
+  long bigiter;
   *colCnt = 0;
   *rowCnt = 0;
 
@@ -149,32 +145,50 @@ TYPEUSE * read_matrix(int * rowCnt, int * colCnt, char * mapped)
   (*rowCnt)++;
 
   /* Malloc the Matrix */
-  if (( matrix = (TYPEUSE *) malloc((*rowCnt) * (*colCnt) * sizeof(TYPEUSE))) == NULL ) {
+  if (( matrix = (TYPEUSE**) malloc((*rowCnt) * sizeof(TYPEUSE*))) == NULL ) {
     printf("malloc issue");
+  }
+  for(i = 0; i < (*rowCnt); i++) {
+    if (( matrix[i] = (TYPEUSE*) malloc((*colCnt) * sizeof(TYPEUSE))) == NULL ) {
+      printf("inside malloc issue");
+    }
   }
     
   /* Read values into matrix */
   i = 0; j = 0;
   for (token = strtok(mapped, delim_space); token != NULL; token = strtok(NULL, delim_space)) {
     value = strtod(token, &unconverted);
-    matrix[i*(*colCnt) +j] = value;
+    matrix[i][j] = value;
     j++;
     if(j == (*colCnt)) {
       j = 0;
       if(++i == (*rowCnt))
-	      break;
+	break;
     }
   }
   return matrix;
 
 }
+/*Frees 2D Matrices*/
+void free_matrix(TYPEUSE ** matrix, int row)
+{
+  int i;
+
+  for(i = 0; i < row; i++) 
+  {
+    free(matrix[i]);
+  }
+  
+  free(matrix);
+}
 int main (int argc, const char * argv[])
 {
 
   const char * Cfile = "result.out";
-  TYPEUSE * Amatrix, * Bmatrix, * Cmatrix;
+  TYPEUSE ** Amatrix, ** Bmatrix, ** Cmatrix;
 
   int Arow, Acol, Brow, Bcol;
+  int i;
 
   char * Amapped, * Bmapped;
 
@@ -186,7 +200,7 @@ int main (int argc, const char * argv[])
 
   Amapped = read_file(argv[1]);
   Bmapped = read_file(argv[2]);
-  
+
   Amatrix = read_matrix(&Arow, &Acol, Amapped); 
   Bmatrix = read_matrix(&Brow, &Bcol, Bmapped);
   
@@ -197,17 +211,23 @@ int main (int argc, const char * argv[])
   }
   
   /* Malloc a New Matrix */
-  if (( Cmatrix = (TYPEUSE *) malloc((Arow) * (Bcol) * sizeof(TYPEUSE))) == NULL ) {
+  if (( Cmatrix = (TYPEUSE**)malloc((Arow) * sizeof(TYPEUSE*))) == NULL ) {
     printf("malloc issue");
   }
-  
+  for(i = 0; i < Arow; i++) {
+    if (( Cmatrix[i] = (TYPEUSE*)malloc((Bcol) * sizeof(TYPEUSE))) == NULL ) {
+      printf("inside malloc issue");
+    }
+  }
+
   calc_matrix(Amatrix, Bmatrix, Cmatrix, Arow, Acol, Brow, Bcol);
 
   output_matrix(Cfile, Cmatrix, Arow, Bcol);
+  
   /* Free Stuff */
-  free(Amatrix);
-  free(Bmatrix);
-  free(Cmatrix);
+  free_matrix(Amatrix, Arow);
+  free_matrix(Bmatrix, Brow);
+  free_matrix(Cmatrix, Arow);
   free(Amapped);
   free(Bmapped);
 
