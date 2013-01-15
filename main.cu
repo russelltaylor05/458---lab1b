@@ -24,6 +24,16 @@
 
 #endif
 
+/*Handles CUDA errors, taking from provided sample code on clupo site*/
+static void HandleError( cudaError_t err, const char * file, int line)
+{
+  if(err !=cudaSuccess){
+    printf("%s in %s at line %d\n", cudaGetErrorString(err), file, line);
+    exit(EXIT_FAILURE);
+  }
+}
+#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
+
 
 /*Reads Input File and Returns Buffer of Contents*/
 char* read_file(const char * file_name) 
@@ -168,14 +178,30 @@ TYPEUSE * read_matrix(int * rowCnt, int * colCnt, char * mapped)
   return matrix;
 
 }
+
+__global__ void MMKernel(TYPEUSE *A_d, TYPEUSE *B_d, TYPEUSE * C_d, int depth, int Awidth, int Bwidth)
+{
+  TYPEUSE Cvalue = 0.0;
+  for(int k = 0; k < depth; k++)
+  {
+    TYPEUSE Aelement = A_d[threadIdx.y * Awidth + k];
+    TYPEUSE Belement = B_d[Bwidth *k + threadIdx.x];
+    Cvalue+= Aelement * Belement;
+    if(threadIdx.x == 0 && k == 3)
+      printf("%d, sum: %f, Ael: %f, Bel: %f\n", threadIdx.y, Cvalue, Aelement, Belement);
+  }
+  C_d[threadIdx.y * Bwidth + threadIdx.x] = Cvalue;
+}
+
 int main (int argc, const char * argv[])
 {
 
   const char * Cfile = "result.out";
+  
   TYPEUSE * Amatrix, * Bmatrix, * Cmatrix;
-
+  TYPEUSE * A_d, * B_d, * C_d;
   int Arow, Acol, Brow, Bcol;
-
+  int size;
   char * Amapped, * Bmapped;
 
   if(argc != 3)
@@ -201,10 +227,36 @@ int main (int argc, const char * argv[])
     printf("malloc issue");
   }
   
-  calc_matrix(Amatrix, Bmatrix, Cmatrix, Arow, Acol, Brow, Bcol);
+
+  /* Malloc and Copy space on GPU */
+  size = Arow * Acol * sizeof(TYPEUSE);
+  cudaMalloc(&A_d, size);
+  cudaMemcpy(A_d, Amatrix, size, cudaMemcpyHostToDevice);
+  
+  size = Brow * Bcol * sizeof(TYPEUSE);
+  cudaMalloc(&B_d, size);
+  cudaMemcpy(B_d, Bmatrix, size, cudaMemcpyHostToDevice);
+
+  size = Arow * Bcol * sizeof(TYPEUSE);
+  cudaMalloc(&C_d, size);
+
+  /*Kernel Call*/
+
+  dim3 dimGrid(1,1);
+  dim3 dimBlock(Bcol,Arow);
+  printf("Acol: %d\n", Acol);
+  MMKernel<<<dimGrid, dimBlock>>>(A_d, B_d, C_d, Brow, Arow, Bcol);
+
+  cudaMemcpy(Cmatrix,C_d,size, cudaMemcpyDeviceToHost);
+
+//  calc_matrix(Amatrix, Bmatrix, Cmatrix, Arow, Acol, Brow, Bcol);
 
   output_matrix(Cfile, Cmatrix, Arow, Bcol);
+  
   /* Free Stuff */
+  cudaFree(A_d);
+  cudaFree(B_d);
+  cudaFree(C_d);
   free(Amatrix);
   free(Bmatrix);
   free(Cmatrix);
