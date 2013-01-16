@@ -22,6 +22,9 @@ test3: $(TARGET)
 	../lab1a/mm_cpu input/D.in input/D.in > out/result2
 	diff out/result1 out/result2
 
+test4: $(TARGET)
+	$(TARGET) input/1408.in input/1408.in > out/result1
+	diff out/result1 out/1408.out
 
 test32: $(TARGET)
 	$(TARGET) input/C.in input/C.in
