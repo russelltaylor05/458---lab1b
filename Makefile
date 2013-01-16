@@ -17,11 +17,17 @@ test: $(TARGET)
 test2: $(TARGET)
 	$(TARGET) input/B.in input/B.in
 
+test3: $(TARGET)
+	$(TARGET) input/D.in input/D.in > out/result1
+	../lab1a/mm_cpu input/D.in input/D.in > out/result2
+	diff out/result1 out/result2
+
+
 test32: $(TARGET)
 	$(TARGET) input/C.in input/C.in
 
 test64: $(TARGET)
-	$(TARGET) input/D.in input/D.in
+	$(TARGET) input/D.in input/D.in > out/result1
 
 
 

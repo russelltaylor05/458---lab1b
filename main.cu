@@ -102,26 +102,24 @@ void output_matrix(const char * outputfile, TYPEUSE *matrix, int row, int col)
   fclose(ofp);
 }
 
-void print_matrix(const char * outputfile, TYPEUSE *matrix, int row, int col) 
+
+/*
+ * Simply prints out the matrix to screen 
+ */
+void print_matrix(TYPEUSE *matrix, int row, int col) 
 {
   int i, j;
-
-  /*FILE *ofp = fopen(outputfile, "w");
-  if(!ofp){
-    fprintf (stderr, "Error opening output file.\n");
-    exit (EXIT_FAILURE);    
-  }*/
-
   for(i = 0; i < row; i++) {
     for(j = 0; j < col; j++) {
-      printf("Row: %d Col: %d Num: ", i, j);
+      //printf("(%d,%d)", i, j);
       printf("%.2f ",matrix[i*col +j]);
     }  
     if(i < row-1){
       printf("\n");
     }
   }
-  //fclose(ofp);
+  printf("\n");
+
 }
 
 /*Created a Matrix based on Buffered Input Information*/
@@ -182,43 +180,55 @@ TYPEUSE * read_matrix(int * rowCnt, int * colCnt, char * mapped)
 __global__ void MMKernel(TYPEUSE *A_d, TYPEUSE *B_d, TYPEUSE * C_d, int depth, int Awidth, int Bwidth)
 {
   TYPEUSE Cvalue = 0.0;
-  for(int k = 0; k < depth; k++)
-  {
-    TYPEUSE Aelement = A_d[threadIdx.y * Awidth + k];
-    TYPEUSE Belement = B_d[Bwidth *k + threadIdx.x];
-    Cvalue+= Aelement * Belement;
-    if(threadIdx.x == 0 && k == 3)
-      printf("%d, sum: %f, Ael: %f, Bel: %f\n", threadIdx.y, Cvalue, Aelement, Belement);
+
+  int resultLength = Awidth * Bwidth;
+  int resultWidth = Bwidth;
+  int resultHeight = Awidth;
+  int resultCol = blockIdx.x * blockDim.x + threadIdx.x;
+  int resultRow = blockIdx.y * blockDim.y + threadIdx.y;  
+  int resultIndex = resultRow * resultWidth + resultCol;
+
+  if(resultRow > Awidth || resultCol > Bwidth)
+    return;
+    
+  for(int k = 0; k < depth; k++) {
+    TYPEUSE Aelement = A_d[resultRow * Awidth + k];
+    TYPEUSE Belement = B_d[Bwidth * k + resultCol];
+    Cvalue += Aelement * Belement;
   }
-  C_d[threadIdx.y * Bwidth + threadIdx.x] = Cvalue;
+  C_d[resultIndex] = Cvalue;
 }
 
 int main (int argc, const char * argv[])
 {
-
   const char * Cfile = "result.out";
-  
+  cudaDeviceProp prop;  
   TYPEUSE * Amatrix, * Bmatrix, * Cmatrix;
   TYPEUSE * A_d, * B_d, * C_d;
   int Arow, Acol, Brow, Bcol;
-  int size;
+  int size, i;
+  int blockRow, blockCol;
   char * Amapped, * Bmapped;
 
-  if(argc != 3)
-  { 
+  if(argc != 3) { 
     fprintf(stderr, "Usage: [Matrix A] [Matrix B]\n");
     exit(EXIT_FAILURE);
   }
 
+  /* Device Properties */
+  /*
+  cudaGetDeviceProperties(&prop,0);
+  printf("maxThreads: %d\n", prop.maxThreadsPerBlock);
+  */
+
+
+  /* Read and Map matrix */
   Amapped = read_file(argv[1]);
   Bmapped = read_file(argv[2]);
-  
   Amatrix = read_matrix(&Arow, &Acol, Amapped); 
   Bmatrix = read_matrix(&Brow, &Bcol, Bmapped);
-  
-  if(Acol != Brow)
-  {
-    fprintf(stderr, "Matrices are not a compatible size to be multipliedi\n");
+  if(Acol != Brow) {
+    fprintf(stderr, "Matrices are not a compatible size to be multiplied\n");
     exit(EXIT_FAILURE);
   }
   
@@ -227,7 +237,6 @@ int main (int argc, const char * argv[])
     printf("malloc issue");
   }
   
-
   /* Malloc and Copy space on GPU */
   size = Arow * Acol * sizeof(TYPEUSE);
   cudaMalloc(&A_d, size);
@@ -239,19 +248,21 @@ int main (int argc, const char * argv[])
 
   size = Arow * Bcol * sizeof(TYPEUSE);
   cudaMalloc(&C_d, size);
-
+  
+  blockRow = Arow / 32;
+  blockCol = Bcol / 32;
+    
   /*Kernel Call*/
-
-  dim3 dimGrid(1,1);
-  dim3 dimBlock(Bcol,Arow);
-  printf("Acol: %d\n", Acol);
-  MMKernel<<<dimGrid, dimBlock>>>(A_d, B_d, C_d, Brow, Arow, Bcol);
+  dim3 dimGrid(2,2);
+  dim3 dimBlock(32,32);
+  MMKernel<<<dimGrid,dimBlock>>>(A_d, B_d, C_d, Brow, Arow, Bcol);
 
   cudaMemcpy(Cmatrix,C_d,size, cudaMemcpyDeviceToHost);
 
-//  calc_matrix(Amatrix, Bmatrix, Cmatrix, Arow, Acol, Brow, Bcol);
-
-  output_matrix(Cfile, Cmatrix, Arow, Bcol);
+  //calc_matrix(Amatrix, Bmatrix, Cmatrix, Arow, Acol, Brow, Bcol);
+  //output_matrix(Cfile, Cmatrix, Arow, Bcol);
+  
+  print_matrix(Cmatrix, Arow, Bcol);
   
   /* Free Stuff */
   cudaFree(A_d);

@@ -2,4 +2,5 @@
 main
 *.out
 mm_cpu
-
+mm_cuda
+out*
