@@ -11,6 +11,14 @@ all:	mm_cuda
 mm_cuda: $(SRCFILES) 
 	nvcc $(NVFLAGS) -o mm_cuda $^
 
+double: $(SRCFILES)
+	nvcc $(NVFLAGS) -DDOUBLE -o mm_cuda main.cu  
+
+single: $(SRCFILES)
+	nvcc $(NVFLAGS) -DSINGLE -o mm_cuda main.cu
+
+
+
 test: $(TARGET)
 	$(TARGET) input/A.in input/A.in
 
