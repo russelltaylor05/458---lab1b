@@ -249,11 +249,11 @@ int main (int argc, const char * argv[])
   size = Arow * Bcol * sizeof(TYPEUSE);
   cudaMalloc(&C_d, size);
   
-  blockRow = Arow / 32;
-  blockCol = Bcol / 32;
+  blockRow = (Arow+31) / 32;
+  blockCol = (Bcol+31) / 32;
     
   /*Kernel Call*/
-  dim3 dimGrid(2,2);
+  dim3 dimGrid(blockCol,blockRow);
   dim3 dimBlock(32,32);
   MMKernel<<<dimGrid,dimBlock>>>(A_d, B_d, C_d, Brow, Arow, Bcol);
 
