@@ -52,8 +52,9 @@ char* read_file(const char * file_name)
   size = ftell(fp);
   rewind (fp);
   
-  buffer = (char*) malloc (sizeof(char)*size);
-  fread (buffer, 1, size, fp);
+  buffer = (char*) malloc (sizeof(char)*size + 1);
+  size = fread (buffer, 1, size, fp);
+  buffer[size] = 0;
   fclose(fp);
   return buffer;
 }
