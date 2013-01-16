@@ -224,7 +224,6 @@ int main (int argc, const char * argv[])
   printf("maxThreads: %d\n", prop.maxThreadsPerBlock);
   */
 
-
   /* Read and Map matrix */
   Amapped = read_file(argv[1]);
   Bmapped = read_file(argv[2]);
@@ -262,10 +261,9 @@ int main (int argc, const char * argv[])
 
   cudaMemcpy(Cmatrix,C_d,size, cudaMemcpyDeviceToHost);
 
-  //calc_matrix(Amatrix, Bmatrix, Cmatrix, Arow, Acol, Brow, Bcol);
-  //output_matrix(Cfile, Cmatrix, Arow, Bcol);
+  output_matrix(Cfile, Cmatrix, Arow, Bcol);
   
-  print_matrix(Cmatrix, Arow, Bcol);
+  //print_matrix(Cmatrix, Arow, Bcol);
   
   /* Free Stuff */
   cudaFree(A_d);
