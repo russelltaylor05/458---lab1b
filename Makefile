@@ -1,4 +1,5 @@
-NVFLAGS=-g -O2 -arch=compute_20 -code=sm_20
+#NVFLAGS=-g -O2 -arch=compute_20 -code=sm_20 
+NVFLAGS=-g --ptxas-options="-v"
 # list .c and .cu source files here
 # use -02 for optimization during timed runs
 

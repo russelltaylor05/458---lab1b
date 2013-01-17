@@ -15,5 +15,10 @@ Double Precision:
 real	0m3.151  0m2.098  0m2.099 
 
 
+Question:
+Quadro 5000 has 32 Cuda Cores for each of the 11 Streaming MultiProcessors = 352 Cores
+Each Core can handle a Warp which contains 32 Threads
+Therefore: 32 threads * 352 Cores = 11,264
+
 
 
