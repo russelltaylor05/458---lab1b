@@ -24,7 +24,10 @@
 
 #endif
 
-/*Handles CUDA errors, taking from provided sample code on clupo site*/
+/* 
+ * Handles CUDA errors, taking from provided sample code on clupo site
+ */
+/*
 static void HandleError( cudaError_t err, const char * file, int line)
 {
   if(err !=cudaSuccess){
@@ -33,6 +36,7 @@ static void HandleError( cudaError_t err, const char * file, int line)
   }
 }
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
+*/
 
 
 /*Reads Input File and Returns Buffer of Contents*/
@@ -52,9 +56,8 @@ char* read_file(const char * file_name)
   size = ftell(fp);
   rewind (fp);
   
-  buffer = (char*) malloc (sizeof(char)*size + 1);
-  size = fread (buffer, 1, size, fp);
-  buffer[size] = 0;
+  buffer = (char*) malloc (sizeof(char)*size);
+  fread (buffer, 1, size, fp);
   fclose(fp);
   return buffer;
 }
@@ -182,9 +185,8 @@ __global__ void MMKernel(TYPEUSE *A_d, TYPEUSE *B_d, TYPEUSE * C_d, int depth, i
 {
   TYPEUSE Cvalue = 0.0;
 
-  int resultLength = Awidth * Bwidth;
+  //int resultLength = Awidth * Bwidth;
   int resultWidth = Bwidth;
-  int resultHeight = Awidth;
   int resultCol = blockIdx.x * blockDim.x + threadIdx.x;
   int resultRow = blockIdx.y * blockDim.y + threadIdx.y;  
   int resultIndex = resultRow * resultWidth + resultCol;
@@ -203,11 +205,10 @@ __global__ void MMKernel(TYPEUSE *A_d, TYPEUSE *B_d, TYPEUSE * C_d, int depth, i
 int main (int argc, const char * argv[])
 {
   const char * Cfile = "result.out";
-  cudaDeviceProp prop;  
   TYPEUSE * Amatrix, * Bmatrix, * Cmatrix;
   TYPEUSE * A_d, * B_d, * C_d;
   int Arow, Acol, Brow, Bcol;
-  int size, i;
+  int size;
   int blockRow, blockCol;
   char * Amapped, * Bmapped;
 
@@ -218,10 +219,10 @@ int main (int argc, const char * argv[])
 
   /* Device Properties */
   /*
+  cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop,0);
   printf("maxThreads: %d\n", prop.maxThreadsPerBlock);
   */
-
 
   /* Read and Map matrix */
   Amapped = read_file(argv[1]);
@@ -260,10 +261,9 @@ int main (int argc, const char * argv[])
 
   cudaMemcpy(Cmatrix,C_d,size, cudaMemcpyDeviceToHost);
 
-  //calc_matrix(Amatrix, Bmatrix, Cmatrix, Arow, Acol, Brow, Bcol);
-  //output_matrix(Cfile, Cmatrix, Arow, Bcol);
+  output_matrix(Cfile, Cmatrix, Arow, Bcol);
   
-  print_matrix(Cmatrix, Arow, Bcol);
+  //print_matrix(Cmatrix, Arow, Bcol);
   
   /* Free Stuff */
   cudaFree(A_d);
