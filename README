@@ -10,12 +10,9 @@ To build a Double Precision Executable, use "make double"
 
 Code Usage:
 
-./mm_cpu [MATRIX A INFILE] [MATRIX B INFILE]
+./mm_cuda [MATRIX A INFILE] [MATRIX B INFILE]
 Outputs matrix into file "result.out"
 
 
-Notes on Code:
 
-Valgrind returns several mem errors due to strtok, strlen, etc... As far as we know, we cannot correct these..
-No memory errors come from mallocs in our code
 
